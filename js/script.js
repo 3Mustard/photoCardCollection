@@ -22,6 +22,8 @@ const prefixes = generatePrefixes();
 const exts = ['jpg','jpeg','png','webp','jfif'];
 const BASE_FOLDER = 'images/Twice';
 
+let currentLoadId =0; // incremented each time loadMember is called to cancel stale runs
+
 function setActive(el){
  links.forEach(l=>l.classList.remove('active'));
  if(el) el.classList.add('active');
@@ -34,8 +36,8 @@ function clearGallery(){
 function checkImage(src){
  return new Promise(resolve => {
  const img = new Image();
- img.onload = () => resolve(true);
- img.onerror = () => resolve(false);
+ img.onload = () => { console.debug('image load ok', src); resolve(true); };
+ img.onerror = () => { console.debug('image load err', src); resolve(false); };
  img.src = src;
  });
 }
@@ -49,6 +51,7 @@ async function findExistingSrc(folder, base){
  for(const v of variants){
  for(const ext of exts){
  const path = `${v}/${base}.${ext}`;
+ console.debug('checking', path);
  // eslint-disable-next-line no-await-in-loop
  const ok = await checkImage(path);
  if(ok) return path;
@@ -67,12 +70,14 @@ async function getBasesForMember(member){
  if(Array.isArray(data) && data.length>0) return data.map(String);
  }
  }catch(e){
- // ignore and fallback
+ console.debug('index.json fetch failed', folder, e);
  }
  return prefixes; // fallback
 }
 
 async function loadMember(member){
+ const thisLoadId = ++currentLoadId; // mark this run
+ console.debug('loadMember start', member, 'id', thisLoadId);
  clearGallery();
  setActive(document.querySelector(`.nav-links a[data-folder="${member}"]`));
  const folder = `${BASE_FOLDER}/${member}`;
@@ -80,6 +85,9 @@ async function loadMember(member){
  let foundAny = false;
 
  const bases = await getBasesForMember(member);
+ // abort if a newer load started
+ if(thisLoadId !== currentLoadId) { console.debug('aborting stale load after bases', member, thisLoadId); return; }
+ console.debug('bases to check count', bases.length);
 
  for(const base of bases){
  // try to find base1 and base2 (e.g., aa1, aa2 or cat1, cat2)
@@ -88,8 +96,12 @@ async function loadMember(member){
  findExistingSrc(folder, `${base}2`)
  ]);
 
+ // abort if a newer load started
+ if(thisLoadId !== currentLoadId) { console.debug('aborting stale load during loop', member, thisLoadId); return; }
+
  if(!oneSrc && !twoSrc) continue; // nothing for this pair
 
+ console.debug('found pair for base', base, oneSrc, twoSrc);
  foundAny = true;
 
  const pairDiv = document.createElement('div');
@@ -120,8 +132,13 @@ async function loadMember(member){
  pairDiv.appendChild(makeCard(oneSrc));
  pairDiv.appendChild(makeCard(twoSrc));
 
+ // abort before DOM append if stale
+ if(thisLoadId !== currentLoadId) { console.debug('aborting stale load before append', member, thisLoadId); return; }
  gallery.appendChild(pairDiv);
  }
+
+ // abort if stale before showing empty state
+ if(thisLoadId !== currentLoadId) { console.debug('aborting stale load before empty check', member, thisLoadId); return; }
 
  if(!foundAny){
  gallery.innerHTML = `<div class="empty">No images found for ${member}. Place images in ${folder} named like a1.jpg, a2.jpg, b1.jpg, b2.jpg, aa1.jpg, aa2.jpg... or add an <code>index.json</code> file listing base names (e.g. ["cat","aa"]) in the member folder for arbitrary names.</div>`;
