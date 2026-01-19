@@ -1,0 +1,41 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>Trading Card Collection</title>
+ <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+ <header class="navbar">
+ <div class="container">
+ <nav>
+ <ul class="nav-links">
+ <li><a href="#nayeon" data-folder="nayeon">Nayeon</a></li>
+ <li><a href="#jeongyeon" data-folder="jeongyeon">Jeongyeon</a></li>
+ <li><a href="#momo" data-folder="momo">Momo</a></li>
+ <li><a href="#sana" data-folder="sana">Sana</a></li>
+ <li><a href="#jihyo" data-folder="jihyo">Jihyo</a></li>
+ <li><a href="#mina" data-folder="mina">Mina</a></li>
+ <li><a href="#dahyun" data-folder="dahyun">Dahyun</a></li>
+ <li><a href="#chaeyoung" data-folder="chaeyoung">Chaeyoung</a></li>
+ <li><a href="#tzuyu" data-folder="tzuyu">Tzuyu</a></li>
+ </ul>
+ </nav>
+ </div>
+ </header>
+
+ <main class="main container">
+ <div id="gallery" class="gallery"></div>
+ </main>
+
+ <button id="toTop" class="to-top" aria-label="Scroll to top">
+ <!-- up chevron SVG using currentColor -->
+ <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+ </svg>
+ </button>
+
+ <script src="js/script.js"></script>
+</body>
+</html>

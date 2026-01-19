@@ -1,0 +1,155 @@
+const gallery = document.getElementById('gallery');
+const links = document.querySelectorAll('.nav-links a');
+const toTop = document.getElementById('toTop');
+
+const members = ['nayeon','jeongyeon','momo','sana','jihyo','mina','dahyun','chaeyoung','tzuyu'];
+// generate prefixes of length1 and2 (a-z) to support names like a1,a2 and aa1,aa2
+function generatePrefixes(){
+ const letters = 'abcdefghijklmnopqrstuvwxyz';
+ const res = [];
+ for(let i=0;i<letters.length;i++) res.push(letters[i]);
+ for(let i=0;i<letters.length;i++){
+ for(let j=0;j<letters.length;j++){
+ res.push(letters[i]+letters[j]);
+ }
+ }
+ // also include digits0-9 as single prefixes in case of numeric base
+ for(let d=0; d<10; d++) res.push(String(d));
+ return res;
+}
+const prefixes = generatePrefixes();
+
+const exts = ['jpg','jpeg','png','webp','jfif'];
+const BASE_FOLDER = 'images/Twice';
+
+function setActive(el){
+ links.forEach(l=>l.classList.remove('active'));
+ if(el) el.classList.add('active');
+}
+
+function clearGallery(){
+ gallery.innerHTML = '';
+}
+
+function checkImage(src){
+ return new Promise(resolve => {
+ const img = new Image();
+ img.onload = () => resolve(true);
+ img.onerror = () => resolve(false);
+ img.src = src;
+ });
+}
+
+// Try folder variants (lowercase and capitalized member folder) and multiple extensions
+async function findExistingSrc(folder, base){
+ // folder expected like 'images/Twice/member'
+ const parts = folder.split('/');
+ const member = parts[parts.length-1];
+ const variants = [ `${BASE_FOLDER}/${member}`, `${BASE_FOLDER}/${member.charAt(0).toUpperCase() + member.slice(1)}` ];
+ for(const v of variants){
+ for(const ext of exts){
+ const path = `${v}/${base}.${ext}`;
+ // eslint-disable-next-line no-await-in-loop
+ const ok = await checkImage(path);
+ if(ok) return path;
+ }
+ }
+ return null;
+}
+
+// Try to fetch an index.json file in the member folder that lists available bases
+async function getBasesForMember(member){
+ const folder = `${BASE_FOLDER}/${member}`;
+ try{
+ const resp = await fetch(`${folder}/index.json`, {cache: 'no-store'});
+ if(resp.ok){
+ const data = await resp.json();
+ if(Array.isArray(data) && data.length>0) return data.map(String);
+ }
+ }catch(e){
+ // ignore and fallback
+ }
+ return prefixes; // fallback
+}
+
+async function loadMember(member){
+ clearGallery();
+ setActive(document.querySelector(`.nav-links a[data-folder="${member}"]`));
+ const folder = `${BASE_FOLDER}/${member}`;
+
+ let foundAny = false;
+
+ const bases = await getBasesForMember(member);
+
+ for(const base of bases){
+ // try to find base1 and base2 (e.g., aa1, aa2 or cat1, cat2)
+ const [oneSrc, twoSrc] = await Promise.all([
+ findExistingSrc(folder, `${base}1`),
+ findExistingSrc(folder, `${base}2`)
+ ]);
+
+ if(!oneSrc && !twoSrc) continue; // nothing for this pair
+
+ foundAny = true;
+
+ const pairDiv = document.createElement('div');
+ pairDiv.className = 'pair';
+
+ // helper to create card (either image or empty placeholder)
+ const makeCard = (src) => {
+ const card = document.createElement('div');
+ card.className = 'card';
+ if(src){
+ const img = document.createElement('img');
+ img.src = src;
+ img.alt = '';
+ img.loading = 'lazy';
+ card.appendChild(img);
+ } else {
+ // empty slot to keep layout consistent
+ const placeholder = document.createElement('div');
+ placeholder.className = 'empty-slot';
+ placeholder.style.width = '100%';
+ placeholder.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))';
+ placeholder.style.borderRadius = '6px';
+ card.appendChild(placeholder);
+ }
+ return card;
+ };
+
+ pairDiv.appendChild(makeCard(oneSrc));
+ pairDiv.appendChild(makeCard(twoSrc));
+
+ gallery.appendChild(pairDiv);
+ }
+
+ if(!foundAny){
+ gallery.innerHTML = `<div class="empty">No images found for ${member}. Place images in ${folder} named like a1.jpg, a2.jpg, b1.jpg, b2.jpg, aa1.jpg, aa2.jpg... or add an <code>index.json</code> file listing base names (e.g. ["cat","aa"]) in the member folder for arbitrary names.</div>`;
+ }
+}
+
+// Attach click handlers
+links.forEach(link=>{
+ link.addEventListener('click',e=>{
+ e.preventDefault();
+ const folder = link.dataset.folder;
+ loadMember(folder);
+ window.scrollTo({top:70,behavior:'smooth'});
+ });
+});
+
+// scroll-to-top behavior
+window.addEventListener('scroll', ()=>{
+ if(window.scrollY >200){
+ toTop.classList.add('show');
+ } else {
+ toTop.classList.remove('show');
+ }
+});
+
+toTop.addEventListener('click', ()=>{
+ window.scrollTo({top:0,behavior:'smooth'});
+});
+
+// Load first member on startup
+loadMember(members[0]);

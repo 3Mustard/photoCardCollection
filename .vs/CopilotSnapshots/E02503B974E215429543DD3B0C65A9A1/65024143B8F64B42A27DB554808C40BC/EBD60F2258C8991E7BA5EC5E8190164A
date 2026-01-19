@@ -1,0 +1,65 @@
+﻿const gallery = document.getElementById('gallery');
+const links = document.querySelectorAll('.nav-links a');
+
+const members = ['nayeon','jeongyeon','momo','sana','jihyo','mina','dahyun','chaeyoung','tzuyu'];
+
+function setActive(el){
+ links.forEach(l=>l.classList.remove('active'));
+ el.classList.add('active');
+}
+
+function clearGallery(){
+ gallery.innerHTML = '';
+}
+
+function loadMember(member){
+ clearGallery();
+ setActive(document.querySelector(`.nav-links a[data-folder="${member}"]`));
+ const folder = `images/${member}`;
+ // Assume images named a1,a2,b1,b2,... group by letter
+ // We'll attempt to load a-z prefixes and numbers1-9 until missing
+ const pairs = [];
+ const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+ letters.forEach(letter=>{
+ const first = `${folder}/${letter}1.jpg`;
+ const second = `${folder}/${letter}2.jpg`;
+ pairs.push([first, second]);
+ });
+ // Render pairs
+ let foundAny = false;
+ pairs.forEach(pair=>{
+ const pairDiv = document.createElement('div');
+ pairDiv.className = 'pair';
+ pair.forEach(src=>{
+ const card = document.createElement('div');
+ card.className = 'card';
+ const img = document.createElement('img');
+ img.src = src;
+ img.alt = '';
+ img.onload = ()=>{ foundAny = true; }
+ img.onerror = ()=>{ img.style.display = 'none'; }
+ card.appendChild(img);
+ pairDiv.appendChild(card);
+ });
+ gallery.appendChild(pairDiv);
+ });
+ // If no images found show empty state after a delay
+ setTimeout(()=>{
+ if(!foundAny){
+ gallery.innerHTML = `<div class="empty">No images found for ${member}. Place images in ${folder} named like a1.jpg, a2.jpg, b1.jpg...</div>`;
+ }
+ },400);
+}
+
+// Attach click handlers
+links.forEach(link=>{
+ link.addEventListener('click',e=>{
+ e.preventDefault();
+ const folder = link.dataset.folder;
+ loadMember(folder);
+ window.scrollTo({top:70,behavior:'smooth'});
+ });
+});
+
+// Load first member
+loadMember(members[0]);

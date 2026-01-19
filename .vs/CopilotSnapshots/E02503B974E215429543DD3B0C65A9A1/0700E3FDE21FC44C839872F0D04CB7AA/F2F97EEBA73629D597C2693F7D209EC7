@@ -1,0 +1,108 @@
+﻿const gallery = document.getElementById('gallery');
+const links = document.querySelectorAll('.nav-links a');
+
+const members = ['nayeon','jeongyeon','momo','sana','jihyo','mina','dahyun','chaeyoung','tzuyu'];
+const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const exts = ['jpg','jpeg','png','webp','jfif'];
+
+function setActive(el){
+ links.forEach(l=>l.classList.remove('active'));
+ if(el) el.classList.add('active');
+}
+
+function clearGallery(){
+ gallery.innerHTML = '';
+}
+
+function checkImage(src){
+ return new Promise(resolve => {
+ const img = new Image();
+ img.onload = () => resolve(true);
+ img.onerror = () => resolve(false);
+ img.src = src;
+ });
+}
+
+// Try folder variants (lowercase and capitalized member folder) and multiple extensions
+async function findExistingSrc(folder, base){
+ // folder expected like 'images/member'
+ const parts = folder.split('/');
+ const member = parts[1] || parts[0];
+ const variants = [ `images/${member}`, `images/${member.charAt(0).toUpperCase() + member.slice(1)}` ];
+ for(const v of variants){
+ for(const ext of exts){
+ const path = `${v}/${base}.${ext}`;
+ // eslint-disable-next-line no-await-in-loop
+ const ok = await checkImage(path);
+ if(ok) return path;
+ }
+ }
+ return null;
+}
+
+async function loadMember(member){
+ clearGallery();
+ setActive(document.querySelector(`.nav-links a[data-folder="${member}"]`));
+ const folder = `images/${member}`;
+
+ let foundAny = false;
+
+ for(const letter of letters){
+ // try to find letter1 and letter2 (a1, a2)
+ const [oneSrc, twoSrc] = await Promise.all([
+ findExistingSrc(folder, `${letter}1`),
+ findExistingSrc(folder, `${letter}2`)
+ ]);
+
+ if(!oneSrc && !twoSrc) continue; // nothing for this pair
+
+ foundAny = true;
+
+ const pairDiv = document.createElement('div');
+ pairDiv.className = 'pair';
+
+ // helper to create card (either image or empty placeholder)
+ const makeCard = (src) => {
+ const card = document.createElement('div');
+ card.className = 'card';
+ if(src){
+ const img = document.createElement('img');
+ img.src = src;
+ img.alt = '';
+ img.loading = 'lazy';
+ card.appendChild(img);
+ } else {
+ // empty slot to keep layout consistent
+ const placeholder = document.createElement('div');
+ placeholder.className = 'empty-slot';
+ placeholder.style.width = '100%';
+ placeholder.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))';
+ placeholder.style.borderRadius = '6px';
+ card.appendChild(placeholder);
+ }
+ return card;
+ };
+
+ pairDiv.appendChild(makeCard(oneSrc));
+ pairDiv.appendChild(makeCard(twoSrc));
+
+ gallery.appendChild(pairDiv);
+ }
+
+ if(!foundAny){
+ gallery.innerHTML = `<div class="empty">No images found for ${member}. Place images in ${folder} named like a1.jpg, a2.jpg, b1.jpg, b2.jpg...</div>`;
+ }
+}
+
+// Attach click handlers
+links.forEach(link=>{
+ link.addEventListener('click',e=>{
+ e.preventDefault();
+ const folder = link.dataset.folder;
+ loadMember(folder);
+ window.scrollTo({top:70,behavior:'smooth'});
+ });
+});
+
+// Load first member on startup
+loadMember(members[0]);
